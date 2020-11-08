@@ -20,7 +20,7 @@ namespace Steganography
             "\timage\t- The image to use as source\n" +
             "\tdata\t- The message to encode within the [image] OR a filepath, if so, use the flag /f\n" +
             "\toutput\t- The encoded image path\n" +
-            "\tLSB\t- How many least significan bits to use, must be 1, 2, 4 or 8 (default: 2)\n" +
+            "\tLSB\t- How many least significant bits to use, must be 1, 2, 4 or 8 (default: 2)\n" +
             "\tpassword\t- Password to use when decoding/encoding (default: none)\n" +
             "\n" +
             "  Flags\n  ¨¨¨¨¨\n" +
@@ -29,7 +29,7 @@ namespace Steganography
             "\tAdd all other flags here as well...\n" +
             "";
         private static readonly Encoding BitEncoding = Encoding.Unicode;
-        private static readonly byte[] EndOfDataStreamSequense = new byte[] { 4, 0, 4, 0, 4, 0, 4 };
+        private static readonly byte[] EndOfDataStreamSequence = new byte[] { 4, 0, 4, 0, 4, 0, 4 };
         private enum EmbeddedDataType
         {
             Unknown,
@@ -37,7 +37,7 @@ namespace Steganography
             File        // Then the message is the filename
         }
         // Changing variables
-        private static bool ShowDebugInfo;
+        private static bool _showDebugInfo;
 
         static void Main(string[] args)
         {
@@ -49,11 +49,11 @@ namespace Steganography
 
             //args = new string[] { "/e", "husky.png", "cat.jpg", "husky_cat.png", "/f" };
             //args = new string[] { "/d", "husky_cat.png" };
-            args = new[] {"/e", "cat.png", "hacker.jpg", "hidden.png", "/f"};
+            // args = new[] {"/e", "cat.png", "hacker.jpg", "hidden.png", "/f", "/b", "4"};
             
             Arguments a = Arguments.Parse(args);
 
-            ShowDebugInfo = a.ContainsPattern("i");
+            _showDebugInfo = a.ContainsPattern("i");
 
             string password = null;
             if (a.ContainsPattern("p", typeof(string))) password = a["p"][0];
@@ -70,7 +70,7 @@ namespace Steganography
 
                 string[] p = a["e"];
 
-                Bitmap image = getImage(p);
+                Bitmap image = GetImage(p);
                 if (image == null) return;
 
                 string data = p[1];
@@ -85,17 +85,17 @@ namespace Steganography
                         return;
                     }
 
-                    if (ShowDebugInfo && password != null) Console.WriteLine($"Encrypting filename with password: \"{password}\"...");
+                    if (_showDebugInfo && password != null) Console.WriteLine($"Encrypting filename with password: \"{password}\"...");
                     byte[] encryptedName = Encrypt(BitEncoding.GetBytes(data), password);
 
-                    if (ShowDebugInfo && password != null) Console.WriteLine($"Encrypting file binary with password: \"{password}\"...");
+                    if (_showDebugInfo && password != null) Console.WriteLine($"Encrypting file binary with password: \"{password}\"...");
 
                     //string fileContent = File.ReadAllText(data);
                     //byte[] fileData = BitEncoding.GetBytes(fileContent);
                     byte[] fileData = File.ReadAllBytes(data);
                     byte[] encryptedData = Encrypt(fileData, password);
 
-                    if (ShowDebugInfo) Console.WriteLine($"Encoding encrypted data into \"{p[0]}\"...");
+                    if (_showDebugInfo) Console.WriteLine($"Encoding encrypted data into \"{p[0]}\"...");
                     
                     EncodeFile(image, encryptedName, encryptedData, output, bitsEncoded);
                 }
@@ -104,58 +104,52 @@ namespace Steganography
                     // Data is message
                     byte[] messageBytes = BitEncoding.GetBytes(data);
                     byte[] encryptedMessage = Encrypt(messageBytes, password);
-                    if (ShowDebugInfo && password != null) Console.WriteLine($"Encrypted: \"{data}\" with password: \"{password}\"");
+                    if (_showDebugInfo && password != null) Console.WriteLine($"Encrypted: \"{data}\" with password: \"{password}\"");
 
-                    if (ShowDebugInfo) Console.WriteLine($"Encoding encrypted message into \"{p[0]}\"...");
+                    if (_showDebugInfo) Console.WriteLine($"Encoding encrypted message into \"{p[0]}\"...");
 
                     EncodeMessage(image, encryptedMessage, output, bitsEncoded);
                 }
-                if (ShowDebugInfo) Console.WriteLine($"Writing to file \"{output}\"...");
-                if (ShowDebugInfo) Console.WriteLine("Done!");
+                if (_showDebugInfo) Console.WriteLine($"Writing to file \"{output}\"...");
+                if (_showDebugInfo) Console.WriteLine("Done!");
             }
             else if (a.ContainsPattern("d", typeof(string)))
             {
                 string[] p = a["d"];
 
-                Bitmap image = getImage(p);
+                Bitmap image = GetImage(p);
                 if (image == null) return;
 
-                if (ShowDebugInfo) Console.WriteLine($"Decoding encrypted data in \"{p[0]}\"...");
+                if (_showDebugInfo) Console.WriteLine($"Decoding encrypted data in \"{p[0]}\"...");
 
-                byte[] encryptedData;
-                byte[] encryptedFilename;
-                EmbeddedDataType embeddedDataType = Decode(image, bitsEncoded, out encryptedData, out encryptedFilename);
+                EmbeddedDataType embeddedDataType = Decode(image, bitsEncoded, out var encryptedData, out var encryptedFilename);
 
                 switch (embeddedDataType)
                 {
                     case EmbeddedDataType.Message:
-                        if (ShowDebugInfo) Console.WriteLine($"Decrypting message...");
+                        if (_showDebugInfo) Console.WriteLine($"Decrypting message...");
                         byte[] message = Decrypt(encryptedData, password);
-                        if (ShowDebugInfo) Console.Write("\nHidden message: ");
+                        if (_showDebugInfo) Console.Write("\nHidden message: ");
                         Console.WriteLine(BitEncoding.GetString(message));
                         break;
                     case EmbeddedDataType.File:
                         string filename = BitEncoding.GetString(Decrypt(encryptedFilename, password));
-                        if (ShowDebugInfo) Console.WriteLine($"Found file: \"{filename}\"...");
+                        if (_showDebugInfo) Console.WriteLine($"Found file: \"{filename}\"...");
 
-                        if (!overrideFile(filename)) break;
+                        if (!OverrideFile(filename)) break;
 
                         byte[] data = Decrypt(encryptedData, password);
                         File.WriteAllBytes(filename, data);
                         //string content = BitEncoding.GetString(data);
                         //File.WriteAllText(filename, content);
-                        Console.WriteLine($"Sucessfully extracted file \"{filename}\"!");
+                        Console.WriteLine($"Successfully extracted file \"{filename}\"!");
                         break;
                 }
             }
-            else
-            {
-                Console.WriteLine(Usage);
-                return;
-            }
+            else Console.WriteLine(Usage);
         }
 
-        static bool overrideFile(string filename)
+        static bool OverrideFile(string filename)
         {
             if (File.Exists(filename))
             {
@@ -172,7 +166,7 @@ namespace Steganography
             if (password == null) return data;
             // Encryption using the Vigenère cipher
             byte[] result = new byte[data.Length];
-            for (int i = 0; i < data.Length; i++) result[i] = (byte)( mod(data[i] + password[i % password.Length], byte.MaxValue) );
+            for (int i = 0; i < data.Length; i++) result[i] = (byte)( Mod(data[i] + password[i % password.Length], byte.MaxValue) );
             return result;
         }
         private static byte[] Decrypt(byte[] data, string password)
@@ -180,17 +174,17 @@ namespace Steganography
             if (password == null) return data;
             // Decryption using the Vigenère cipher
             byte[] result = new byte[data.Length];
-            for (int i = 0; i < data.Length; i++) result[i] = (byte)( mod(data[i] - password[i % password.Length], byte.MaxValue));
+            for (int i = 0; i < data.Length; i++) result[i] = (byte)( Mod(data[i] - password[i % password.Length], byte.MaxValue));
             return result;
         }
 
-        static int mod(int x, int m)
+        static int Mod(int x, int m)
         {
             int r = x % m;
             return r < 0 ? r + m : r;
         }
 
-        private static Bitmap getImage(string[] p)
+        private static Bitmap GetImage(string[] p)
         {
             if (!File.Exists(p[0])) { Console.WriteLine("The image was not found..."); return null; }
             return Image.FromFile(p[0]) as Bitmap;
@@ -206,11 +200,11 @@ namespace Steganography
             byte cBuff  = 0;
             int counter = 0;
 
-            byte[] matchEndOfDataStream = new byte[EndOfDataStreamSequense.Length];
+            byte[] matchEndOfDataStream = new byte[EndOfDataStreamSequence.Length];
 
             bool isFirstByte = true;
 
-            bool addPart(byte part)
+            bool AddPart(byte part)
             {
                 cBuff = (byte)( (cBuff << encodedBits) + part);
                 counter++;
@@ -237,17 +231,17 @@ namespace Steganography
                             cBuff = 0;
                             counter = 0;
                         }
-                        if (ShowDebugInfo) Console.WriteLine($"Classifies embedded data as: {embeddedDataType.ToString()}...");
+                        if (_showDebugInfo) Console.WriteLine($"Classifies embedded data as: {embeddedDataType.ToString()}...");
                     }
                     else
                     {
                         // Check for en of transmission
-                        if (matchEndOfDataStream.SequenceEqual(EndOfDataStreamSequense)) // Was last byte of message
+                        if (matchEndOfDataStream.SequenceEqual(EndOfDataStreamSequence)) // Was last byte of message
                         {
                             if (embeddedDataType == EmbeddedDataType.Message) return true;
                             else if (embeddedFilename == null)
                             {
-                                embeddedFilename = mBuff.GetRange(0, mBuff.Count - EndOfDataStreamSequense.Length).ToArray();
+                                embeddedFilename = mBuff.GetRange(0, mBuff.Count - EndOfDataStreamSequence.Length).ToArray();
                                 mBuff = new List<byte>();
                                 mBuff.Add(dByte);
                                 cBuff = 0;
@@ -271,9 +265,9 @@ namespace Steganography
                 return false; // Was not last byte of message
             }
 
-            EmbeddedDataType onReturn(out byte[] d, out byte[] f)
+            EmbeddedDataType OnReturn(out byte[] d, out byte[] f)
             {
-                d = mBuff.GetRange(0, mBuff.Count - EndOfDataStreamSequense.Length).ToArray();
+                d = mBuff.GetRange(0, mBuff.Count - EndOfDataStreamSequence.Length).ToArray();
                 f = embeddedFilename;
                 return embeddedDataType;
             }
@@ -287,14 +281,14 @@ namespace Steganography
                     byte g = (byte)(pixel.G ^ ((pixel.G >> encodedBits) << encodedBits));
                     byte b = (byte)(pixel.B ^ ((pixel.B >> encodedBits) << encodedBits));
 
-                    if (addPart(r)) return onReturn(out data, out filename);
-                    if (addPart(g)) return onReturn(out data, out filename);
-                    if (addPart(b)) return onReturn(out data, out filename);
+                    if (AddPart(r)) return OnReturn(out data, out filename);
+                    if (AddPart(g)) return OnReturn(out data, out filename);
+                    if (AddPart(b)) return OnReturn(out data, out filename);
                 }
             }
 
             //return message;
-            return onReturn(out data, out filename);
+            return OnReturn(out data, out filename);
         }
 
         private static void ShiftAndAddByte(ref byte[] arr, byte dByte)
@@ -324,16 +318,15 @@ namespace Steganography
         {
             List<byte> message = data.ToList();
             message.Insert(0, (byte)EmbeddedDataType.Message); // First byte represent the embedded data type
-            message.AddRange(EndOfDataStreamSequense);
+            message.AddRange(EndOfDataStreamSequence);
 
-            int minImagePixels;
-            if (!canBeEmbedded(message.Count, image, bitsToEncode, out minImagePixels))
+            if (!CanBeEmbedded(message.Count, image, bitsToEncode, out var minImagePixels))
             {
                 int sideLen = (int)Math.Ceiling(Math.Sqrt(minImagePixels));
                 Console.WriteLine("Error! Message could not be embedded, data is too large.");
                 if (bitsToEncode != 8)
                 {
-                    Console.WriteLine("Try to increase the ammount of LSB to use, or");
+                    Console.WriteLine("Try to increase the amount of LSB to use, or");
                 }
                 Console.WriteLine($"Use a source image with a minimum area of {minImagePixels}px*px ({sideLen}px*{sideLen}px)");
                 return;
@@ -376,7 +369,7 @@ namespace Steganography
                 else imgPixelIndex++;
             }
 
-            if (!overrideFile(output)) return;
+            if (!OverrideFile(output)) return;
             image.Save(output, System.Drawing.Imaging.ImageFormat.Bmp);
             image.Dispose();
         }
@@ -385,12 +378,11 @@ namespace Steganography
         {
             List<byte> dataToEncode = filename.ToList();
             dataToEncode.Insert(0, (byte)EmbeddedDataType.File); // First byte represent the embedded data type
-            dataToEncode.AddRange(EndOfDataStreamSequense);
+            dataToEncode.AddRange(EndOfDataStreamSequence);
             dataToEncode.AddRange(data);
-            dataToEncode.AddRange(EndOfDataStreamSequense);
+            dataToEncode.AddRange(EndOfDataStreamSequence);
 
-            int minImagePixels;
-            if (!canBeEmbedded(dataToEncode.Count, image, bitsToEncode, out minImagePixels))
+            if (!CanBeEmbedded(dataToEncode.Count, image, bitsToEncode, out var minImagePixels))
             {
                 int sideLen = (int)Math.Ceiling(Math.Sqrt(minImagePixels));
                 Console.WriteLine("Error! File could not be embedded, data is too large.");
@@ -423,6 +415,11 @@ namespace Steganography
             {
                 int x = imgPixelIndex % image.Width;
                 int y = imgPixelIndex / image.Width;
+                if (y >= image.Height)
+                {
+                    Console.WriteLine("Error! File could not be embedded, data is too large. Some data has not been saved due to source overflow.");
+                    break;
+                }
                 Color p = image.GetPixel(x, y);
 
                 int r = p.R;
@@ -439,12 +436,12 @@ namespace Steganography
                 imgPixelIndex++;
             }
 
-            if (!overrideFile(output)) return;
+            if (!OverrideFile(output)) return;
             image.Save(output, System.Drawing.Imaging.ImageFormat.Bmp);
             image.Dispose();
         }
 
-        private static bool canBeEmbedded(int count, Bitmap image, int lsb, out int minPixels)
+        private static bool CanBeEmbedded(int count, Bitmap image, int lsb, out int minPixels)
         {
             minPixels = count / lsb;
             int pixels = image.Width * image.Height;

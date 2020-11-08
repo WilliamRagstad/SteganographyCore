@@ -28,8 +28,8 @@ namespace Steganography
             "\t/f\t- Interpret data as file (default: interpret as text message)\n" +
             "\tAdd all other flags here as well...\n" +
             "";
-        private static Encoding BitEncoding = Encoding.Unicode;
-        private static byte[] EndOfDataStreamSequense = new byte[] { 4, 0, 4, 0, 4, 0, 4 };
+        private static readonly Encoding BitEncoding = Encoding.Unicode;
+        private static readonly byte[] EndOfDataStreamSequense = new byte[] { 4, 0, 4, 0, 4, 0, 4 };
         private enum EmbeddedDataType
         {
             Unknown,
@@ -49,6 +49,7 @@ namespace Steganography
 
             //args = new string[] { "/e", "husky.png", "cat.jpg", "husky_cat.png", "/f" };
             //args = new string[] { "/d", "husky_cat.png" };
+            args = new[] {"/e", "cat.png", "hacker.jpg", "hidden.png", "/f"};
             
             Arguments a = Arguments.Parse(args);
 
@@ -395,7 +396,7 @@ namespace Steganography
                 Console.WriteLine("Error! File could not be embedded, data is too large.");
                 if (bitsToEncode != 8)
                 {
-                    Console.WriteLine("Try to increase the ammount of LSB to use, or");
+                    Console.WriteLine("Try to increase the amount of LSB to use, or");
                 }
                 Console.WriteLine($"Use a source image with a minimum area of {minImagePixels}px*px ({sideLen}px*{sideLen}px)");
                 return;
@@ -435,7 +436,7 @@ namespace Steganography
                 image.SetPixel(x, y, Color.FromArgb(p.A, r, g, b));
 
                 if (i >= msgParts.Count) break;
-                else imgPixelIndex++;
+                imgPixelIndex++;
             }
 
             if (!overrideFile(output)) return;

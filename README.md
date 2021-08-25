@@ -5,11 +5,11 @@ A cross-platform steganography tool for encoding files and messages in images!
 
 Run using the `.exe` file directly or through the `dotnet` command passing the given `.dll` file.
 
-![Windows](windows dotnetcore.png)
+![Windows](windows%20dotnetcore.png)
 
-![Linux](linux dotnetcore.png)
+![Linux](linux%20dotnetcore.png)
 
-![Linux 2](linux dotnetcore 2.png)
+![Linux 2](linux%20dotnetcore%202.png)
 
 ## Requirements:
 
